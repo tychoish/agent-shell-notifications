@@ -467,6 +467,33 @@ notification after `agent-shell-notifications-idle-timeout' seconds."
   (agent-shell-notifications--cancel-all-timers shell-buffer)
   (agent-shell-notifications--close-all-notifications shell-buffer))
 
+;;;###autoload
+(defun agent-shell-notifications-dismiss (&optional arg)
+  "Cancel timers and close notifications for shell buffer(s).
+With a prefix ARG (\\[universal-argument]), dismiss notifications for
+all agent shell buffers that have active notifications or pending
+timers.
+
+ARG may be a buffer, which is used to dismiss notifications
+for ONLY that buffer's agent shell.
+
+If ARG is nil, the current buffer's agent shell is used."
+  (interactive "P")
+  (cond
+   ((equal arg '(4))
+    (let ((buffers (delete-dups
+                    (append (mapcar #'car agent-shell-notifications--timers)
+                            (mapcar #'car agent-shell-notifications--notification-ids)))))
+      (dolist (buf buffers)
+        (when (buffer-live-p buf)
+          (agent-shell-notifications--cancel-and-close buf)))))
+   ((or (null arg) (bufferp arg))
+    (let ((buf (with-current-buffer (or arg (current-buffer))
+                 (agent-shell--shell-buffer :no-error t :no-create t))))
+      (agent-shell-notifications--cancel-and-close buf)))
+   (t
+    (user-error "Expected a buffer, prefix arg, or nil, got: %S" arg))))
+
 (defun agent-shell-notifications--on-window-activity (window)
   "Cancel timers and close notifications when the shell buffer's WINDOW is selected or deselected."
   (let* ((buf (window-buffer window))
