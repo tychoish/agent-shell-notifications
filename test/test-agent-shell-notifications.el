@@ -724,6 +724,36 @@
 (declare-function agent-shell-notifications-alert-send "agent-shell-notifications-alert" (plist))
 (declare-function agent-shell-notifications-alert-close "agent-shell-notifications-alert" (id))
 
+(ert-deftest asn-test-plist/includes-shell-buffer-name ()
+  "The notification plist carries :shell-buffer-name."
+  (asn-test--with-shell-buffer
+    (agent-shell-notifications--schedule-or-notify
+     'permission-request (current-buffer)
+     (asn-test--make-permission-event "r1" "edit" "Edit README.md"))
+    (should (equal (buffer-name)
+                   (plist-get (car asn-test--send-calls) :shell-buffer-name)))))
+
+(ert-deftest asn-test-alert-provider/sets-functions-and-sends ()
+  "The alert provider installs its functions and titles with the buffer name."
+  (let ((agent-shell-notifications-send-function nil)
+        (agent-shell-notifications-close-function nil)
+        (agent-shell-notifications-transform-function nil)
+        (agent-shell-notifications-transform-timeout-function nil)
+        (calls nil))
+    (load "agent-shell-notifications-alert" nil t)
+    (should (eq #'agent-shell-notifications-alert-send
+                agent-shell-notifications-send-function))
+    (should (eq #'agent-shell-notifications-alert-close
+                agent-shell-notifications-close-function))
+    (should-not (agent-shell-notifications-alert-close "id"))
+    (cl-letf (((symbol-function 'alert)
+               (lambda (msg &rest args) (push (cons msg args) calls))))
+      (should-not (agent-shell-notifications-alert-send
+                   '(:title "T" :body "B" :shell-buffer-name "shell" :timeout 7))))
+    (should (equal "B" (car (car calls))))
+    (should (equal "T <shell>" (plist-get (cdr (car calls)) :title)))))
+
+
 (ert-deftest asn-test-set-provider/switches-between-providers ()
   "set-provider re-applies functions when switching between loaded providers."
   (agent-shell-notifications-set-provider 'agent-shell-notifications-libnotify)
