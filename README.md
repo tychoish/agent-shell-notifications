@@ -31,11 +31,11 @@ Desktop notifications for [agent-shell](https://github.com/xenodium/agent-shell)
   ;; (agent-shell-viewport-view-mode . agent-shell-notifications-viewport-view-mode)
 
   :config
-  ;; Notification display timeout in seconds (0 = never expire (the default), -1 = backend default)
-  ;; (setq agent-shell-notifications-timeout 5)
+  ;; Notification display timeout in seconds (default: 30, 0 = never expire, -1 = backend default)
+  ;; (setq agent-shell-notifications-timeout 30)
 
   ;; Seconds to wait before notifying when the shell is already visible (default: 10)
-  ;; (setq agent-shell-notifications-idle-timeout 30)
+  ;; (setq agent-shell-notifications-idle-timeout 10)
 
   ;; Advanced filtering: suppress notifications during certain hours
   ;; (add-hook 'agent-shell-notifications-inhibit-functions
@@ -43,36 +43,35 @@ Desktop notifications for [agent-shell](https://github.com/xenodium/agent-shell)
   ;;             (let ((hour (decoded-time-hour (decode-time))))
   ;;               (and (>= hour 9) (< hour 17)))))
 
-  ;; Use the alert backend instead of the default libnotify
-  ;; (setq agent-shell-notifications-provider 'agent-shell-notifications-alert)
+  ;; Use libnotify instead of default alert.el
+  ;; (setq agent-shell-notifications-provider 'agent-shell-notifications-libnotify)
   )
 ```
 
 ## Backends
 
-### libnotify (default)
+### alert.el (default)
+
+Uses [alert.el](https://github.com/jwiegley/alert) as the default backend to
+display desktop notifications. Alert supports a [wide range of alert
+backends](https://github.com/jwiegley/alert#builtin-alert-styles)
+including libnotify, macOS notifications ((terminal) `notifier` and AppleScript
+as `osx-notifier`), Windows `toast` notifier, and Emacs mode-line/message alerts.
+
+Originating shell buffer names are automatically formatted into the notification title
+(e.g., `Agent-shell: Ready <*agent-shell*>`).
+
+### libnotify
 
 Uses Emacs' built-in [`notifications.el`](https://www.gnu.org/software/emacs/manual/html_node/elisp/Desktop-Notifications.html) via D-Bus. Works out of the box on Linux with a
 running notification daemon. (Tested with KDE Plasma 6)
-
-### alert.el (experimental)
-
-Uses [alert.el](https://github.com/jwiegley/alert) as a backend to
-display notifications. Alert supports a [range of alert
-backends](https://github.com/jwiegley/alert#builtin-alert-styles)
-including macOS notifications ((terminal) `notifier` and AppleScript
-as `osx-notifier`) and Windows `toast` notifier. Enable it with:
-
-```elisp
-(setq agent-shell-notifications-provider 'agent-shell-notifications-alert)
-```
 
 ## Configuration
 
 ### Backend
 
 **`agent-shell-notifications-provider`** — symbol naming the backend feature to load.
-Defaults to `agent-shell-notifications-libnotify`. Set to `nil` to skip auto-loading and
+Defaults to `agent-shell-notifications-alert`. Set to `nil` to skip auto-loading and
 configure `agent-shell-notifications-send-function` and
 `agent-shell-notifications-close-function` manually.
 

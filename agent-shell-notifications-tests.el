@@ -717,6 +717,50 @@
         (agent-shell-notifications-close-function nil))
     (should-error (agent-shell-notifications-set-provider nil))))
 
+(ert-deftest asn-test-defaults/provider-and-timeout ()
+  "Provider defaults to alert.el and timeout defaults to 30."
+  (should (eq 'agent-shell-notifications-alert
+              (eval (car (get 'agent-shell-notifications-provider 'standard-value)))))
+  (should (= 30
+             (eval (car (get 'agent-shell-notifications-timeout 'standard-value))))))
+
+(ert-deftest asn-test-provider/alert-send-includes-buffer-name ()
+  "alert-send appends originating buffer name to title."
+  (require 'agent-shell-notifications-alert)
+  (let ((alert-args nil))
+    (cl-letf (((symbol-function 'alert)
+               (lambda (text &rest kwargs)
+                 (setq alert-args (cons text kwargs)))))
+      (agent-shell-notifications-alert-send
+       '(:title "Agent-shell: Ready"
+         :body nil
+         :shell-buffer-name "*test-shell*"
+         :timeout 30))
+      (should (equal "Agent-shell: Ready" (car alert-args)))
+      (should (equal "Agent-shell: Ready <*test-shell*>"
+                     (plist-get (cdr alert-args) :title)))
+      (should (equal 'agent-shell (plist-get (cdr alert-args) :category)))
+      (should (equal 'normal (plist-get (cdr alert-args) :severity))))))
+
+(ert-deftest asn-test-provider/libnotify-send-includes-buffer-name ()
+  "libnotify send formats title with buffer name and supplies fallback body."
+  (require 'agent-shell-notifications-libnotify)
+  (let ((notify-args nil))
+    (cl-letf (((symbol-function 'notifications-notify)
+               (lambda (&rest kwargs)
+                 (setq notify-args kwargs)
+                 42)))
+      (let ((id (agent-shell-notifications--send-libnotify
+                 '(:title "Agent-shell: Ready"
+                   :body nil
+                   :shell-buffer-name "*test-shell*"
+                   :timeout 30000))))
+        (should (= 42 id))
+        (should (equal "Agent-shell: Ready <*test-shell*>"
+                       (plist-get notify-args :title)))
+        (should (equal "Agent-shell: Ready"
+                       (plist-get notify-args :body)))))))
+
 (provide 'agent-shell-notifications-tests)
 
 ;;; agent-shell-notifications-tests.el ends here

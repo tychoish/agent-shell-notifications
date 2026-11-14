@@ -17,7 +17,16 @@
 
 (defun agent-shell-notifications--send-libnotify (plist)
   "Send a notification described by PLIST via `notifications-notify'."
-  (apply #'notifications-notify plist))
+  (let* ((title (plist-get plist :title))
+         (body (plist-get plist :body))
+         (buf-name (plist-get plist :shell-buffer-name))
+         (formatted-title (if (and buf-name (not (string-empty-p buf-name)))
+                              (format "%s <%s>" (or title "agent-shell") buf-name)
+                            (or title "agent-shell")))
+         (final-plist (plist-put (copy-sequence plist) :title formatted-title)))
+    (when (null body)
+      (setq final-plist (plist-put final-plist :body (or title ""))))
+    (apply #'notifications-notify final-plist)))
 
 (defun agent-shell-notifications--close-libnotify (id)
   "Close the notification with ID via `notifications-close-notification'."
