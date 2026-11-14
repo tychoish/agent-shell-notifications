@@ -1,4 +1,4 @@
-;;; agent-shell-notifications-tests.el --- Tests for agent-shell-notifications -*- lexical-binding: t; -*-
+;;; test-agent-shell-notifications.el --- Tests for agent-shell-notifications -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 
@@ -847,6 +847,6 @@
         (should (equal "agent-shell"
                        (plist-get notify-args :app-name)))))))
 
-(provide 'agent-shell-notifications-tests)
+(provide 'test-agent-shell-notifications)
 
-;;; agent-shell-notifications-tests.el ends here
+;;; test-agent-shell-notifications.el ends here
