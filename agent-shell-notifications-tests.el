@@ -625,26 +625,30 @@
 (ert-deftest asn-test-viewport-edit-mode/hooks ()
   "Enabling viewport-edit-mode adds window-selection hook; disabling removes it."
   (asn-test--with-shell-buffer
-    (agent-shell-notifications-viewport-edit-mode 1)
-    (should (memq #'agent-shell-notifications--on-window-activity
-                  window-selection-change-functions))
-    (agent-shell-notifications-viewport-edit-mode -1)
-    (should-not (memq #'agent-shell-notifications--on-window-activity
-                      window-selection-change-functions))))
+    (unwind-protect
+        (progn
+          (agent-shell-notifications-viewport-edit-mode 1)
+          (should (memq #'agent-shell-notifications--on-window-activity
+                        window-selection-change-functions)))
+      (agent-shell-notifications-viewport-edit-mode -1)
+      (should-not (memq #'agent-shell-notifications--on-window-activity
+                        window-selection-change-functions)))))
 
 (ert-deftest asn-test-viewport-view-mode/hooks-and-advice ()
   "Enabling viewport-view-mode adds window hook and viewport-reply advice; disabling removes both."
   (asn-test--with-shell-buffer
-    (agent-shell-notifications-viewport-view-mode 1)
-    (should (memq #'agent-shell-notifications--on-window-activity
-                  window-selection-change-functions))
-    (should (advice-member-p #'agent-shell-notifications--on-viewport-activity
-                             #'agent-shell-viewport-reply))
-    (agent-shell-notifications-viewport-view-mode -1)
-    (should-not (memq #'agent-shell-notifications--on-window-activity
-                      window-selection-change-functions))
-    (should-not (advice-member-p #'agent-shell-notifications--on-viewport-activity
-                                 #'agent-shell-viewport-reply))))
+    (unwind-protect
+        (progn
+          (agent-shell-notifications-viewport-view-mode 1)
+          (should (memq #'agent-shell-notifications--on-window-activity
+                        window-selection-change-functions))
+          (should (advice-member-p #'agent-shell-notifications--on-viewport-activity
+                                   #'agent-shell-viewport-reply)))
+      (agent-shell-notifications-viewport-view-mode -1)
+      (should-not (memq #'agent-shell-notifications--on-window-activity
+                        window-selection-change-functions))
+      (should-not (advice-member-p #'agent-shell-notifications--on-viewport-activity
+                                   #'agent-shell-viewport-reply)))))
 
 (ert-deftest asn-test-viewport-view-mode/advice-kept-with-other-buffers ()
   "Viewport-reply advice is NOT removed when other buffers still have viewport-view-mode active."
