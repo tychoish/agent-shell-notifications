@@ -31,6 +31,9 @@
 
 ;; Prevent loading the real libnotify provider (requires D-Bus).
 ;; Also pre-set send/close functions so the load-time set-provider call passes validation.
+(defvar agent-shell-notifications-provider)
+(defvar agent-shell-notifications-send-function)
+(defvar agent-shell-notifications-close-function)
 (setq agent-shell-notifications-provider nil)
 (setq agent-shell-notifications-send-function #'ignore)
 (setq agent-shell-notifications-close-function #'ignore)
@@ -372,22 +375,21 @@
 (ert-deftest asn-test-event-flow/turn-complete-clears-prior-and-notifies ()
   "Turn-complete cancels all timers, closes all notifications, then sends its own."
   (asn-test--with-shell-buffer
-    (let ((buf (current-buffer)))
-      ;; Two pending permission notifications
-      (agent-shell-notifications--on-permission-request
-       (asn-test--make-permission-event "req-A"))
-      (agent-shell-notifications--on-permission-request
-       (asn-test--make-permission-event "req-B"))
-      (should (= 2 (length asn-test--send-calls)))
-      ;; Turn-complete clears both and sends its own
-      (agent-shell-notifications--on-turn-complete
-       (asn-test--make-turn-complete-event))
-      ;; Both prior notifications closed
-      (should (= 2 (length asn-test--close-calls)))
-      ;; New turn-complete notification sent (3 total)
-      (should (= 3 (length asn-test--send-calls)))
+    ;; Two pending permission notifications
+    (agent-shell-notifications--on-permission-request
+     (asn-test--make-permission-event "req-A"))
+    (agent-shell-notifications--on-permission-request
+     (asn-test--make-permission-event "req-B"))
+    (should (= 2 (length asn-test--send-calls)))
+    ;; Turn-complete clears both and sends its own
+    (agent-shell-notifications--on-turn-complete
+     (asn-test--make-turn-complete-event))
+    ;; Both prior notifications closed
+    (should (= 2 (length asn-test--close-calls)))
+    ;; New turn-complete notification sent (3 total)
+    (should (= 3 (length asn-test--send-calls)))
       (should (equal "Agent-shell: Ready"
-                     (plist-get (car asn-test--send-calls) :title))))))
+                     (plist-get (car asn-test--send-calls) :title)))))
 
 (ert-deftest asn-test-event-flow/concurrent-permissions-tracked-separately ()
   "Multiple permission requests get separate notification IDs; response closes only its own."
@@ -716,6 +718,11 @@
   (let ((agent-shell-notifications-send-function #'asn-test--send)
         (agent-shell-notifications-close-function nil))
     (should-error (agent-shell-notifications-set-provider nil))))
+
+(declare-function agent-shell-notifications--send-libnotify "agent-shell-notifications-libnotify" (plist))
+(declare-function agent-shell-notifications--close-libnotify "agent-shell-notifications-libnotify" (id))
+(declare-function agent-shell-notifications-alert-send "agent-shell-notifications-alert" (plist))
+(declare-function agent-shell-notifications-alert-close "agent-shell-notifications-alert" (id))
 
 (ert-deftest asn-test-set-provider/switches-between-providers ()
   "set-provider re-applies functions when switching between loaded providers."

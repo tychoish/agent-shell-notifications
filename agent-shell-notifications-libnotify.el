@@ -15,6 +15,11 @@
 
 (require 'notifications)
 
+(defvar agent-shell-notifications-transform-timeout-function)
+(defvar agent-shell-notifications-transform-function)
+(defvar agent-shell-notifications-send-function)
+(defvar agent-shell-notifications-close-function)
+
 (defun agent-shell-notifications--send-libnotify (plist)
   "Send a notification described by PLIST via `notifications-notify'.
 The shell buffer name is used as the notification subject (:title) and the

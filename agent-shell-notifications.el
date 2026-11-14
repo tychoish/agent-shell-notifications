@@ -77,7 +77,7 @@ The function is called with one argument, SHELL-BUFFER."
   :group 'agent-shell-notifications)
 
 (defcustom agent-shell-notifications-immediate-notifications t
-  "Control which event types trigger immediate notifications when the shell is not visible.
+  "Control event types that trigger immediate notifications when not visible.
 When t, immediately notify for all event types when the shell is not visible.
 When nil, disable all immediate notifications.
 When a list of symbols (e.g. \\='(permission-request)), immediately notify only
@@ -137,7 +137,7 @@ Possible event types: `permission-request', `turn-complete'."
   :group 'agent-shell-notifications)
 
 (defcustom agent-shell-notifications-transform-timeout-function #'identity
-  "Function to transform the timeout value before placing it in the notification plist.
+  "Function to transform timeout value before placing it in notification plist.
 Called with a single argument, the timeout in seconds as resolved by
 `agent-shell-notifications--resolve-timeout'.
 Should return the timeout value in whatever unit the backend expects.
@@ -222,15 +222,16 @@ for permission-request events or `turn-complete' for turn-complete events.")
   "Return non-nil if SHELL-BUFFER or its viewport is visible in a focused frame.
 Uses `frame-focus-state' to check whether the containing frame has input focus.
 Returns nil (triggering a notification) when focus state is unknown."
-  (when-let ((win (or (get-buffer-window shell-buffer t)
-                      (when-let ((viewport (agent-shell-viewport--buffer
-                                            :shell-buffer shell-buffer
-                                            :existing-only t)))
-                        (get-buffer-window viewport t)))))
+  (when-let* ((win (or (get-buffer-window shell-buffer t)
+                       (when-let* ((viewport (agent-shell-viewport--buffer
+                                              :shell-buffer shell-buffer
+                                              :existing-only t)))
+                         (get-buffer-window viewport t)))))
     (eq t (frame-focus-state (window-frame win)))))
 
 (defun agent-shell-notifications--shell-visible-p (shell-buffer)
-  "Return non-nil if SHELL-BUFFER is visible per `agent-shell-notifications-shell-visible-function'."
+  "Return non-nil if SHELL-BUFFER is visible.
+Visibility is determined by `agent-shell-notifications-shell-visible-function'."
   (funcall agent-shell-notifications-shell-visible-function shell-buffer))
 
 (defun agent-shell-notifications--icon-file (shell-buffer)
@@ -288,7 +289,8 @@ current window's buffer."
           (switch-to-buffer target))))))
 
 (defun agent-shell-notifications--switch-to-shell (shell-buffer)
-  "Switch to SHELL-BUFFER using `agent-shell-notifications-switch-to-shell-function'."
+  "Switch to SHELL-BUFFER.
+Uses `agent-shell-notifications-switch-to-shell-function'."
   (funcall agent-shell-notifications-switch-to-shell-function shell-buffer))
 
 (defun agent-shell-notifications--format-default (type event)
@@ -326,9 +328,9 @@ message and falls back to 0."
    ((numberp setting) setting)
    ((functionp setting) (funcall setting type event))
    ((listp setting)
-    (if-let ((entry (assq type setting)))
+    (if-let* ((entry (assq type setting)))
         (cdr entry)
-      (if-let ((fallback (assq 'default setting)))
+      (if-let* ((fallback (assq 'default setting)))
           (cdr fallback)
         (message "agent-shell-notifications: no timeout configured for `%s'; add (%s . VALUE) or (default . VALUE) to your timeout alist" type type)
         0)))))
@@ -363,7 +365,8 @@ message and falls back to 0."
                 (assoc-delete-all key buffer-timers)))))
 
 (defun agent-shell-notifications--add-notification-id (shell-buffer key id)
-  "Register notification ID under KEY for SHELL-BUFFER, replacing any existing entry."
+  "Register notification ID under KEY for SHELL-BUFFER.
+Replaces any existing entry."
   (let ((buffer-ids (map-elt agent-shell-notifications--notification-ids shell-buffer)))
     (setf (map-elt agent-shell-notifications--notification-ids shell-buffer)
           (cons (cons key id)
@@ -386,8 +389,9 @@ meta properties: :app-icon, :timeout, :actions, and :on-action."
                              (agent-shell-notifications--switch-to-shell shell-buffer)))))
 
 (defun agent-shell-notifications--notify-and-track (type shell-buffer event key)
-  "Send notification for TYPE on SHELL-BUFFER with EVENT and track the returned ID under KEY."
-  (when-let ((id (with-demoted-errors "agent-shell-notifications: %s"
+  "Send notification for TYPE on SHELL-BUFFER with EVENT.
+Tracks the returned ID under KEY."
+  (when-let* ((id (with-demoted-errors "agent-shell-notifications: %s"
                    (funcall agent-shell-notifications-send-function
                             (funcall agent-shell-notifications-transform-function
                                      (agent-shell-notifications--make-notification-plist
@@ -461,13 +465,13 @@ notification after `agent-shell-notifications-idle-timeout' seconds."
 (defun agent-shell-notifications--on-send-command (&rest args)
   "Cancel timers and close notifications when a command is sent."
   (with-demoted-errors "agent-shell-notifications: %s"
-    (when-let ((shell-buffer (plist-get args :shell-buffer)))
+    (when-let* ((shell-buffer (plist-get args :shell-buffer)))
       (agent-shell-notifications--cancel-all-timers shell-buffer)
       (agent-shell-notifications--close-all-notifications shell-buffer))))
 
 (defun agent-shell-notifications--on-viewport-activity ()
   "Cancel timers and close notifications on viewport reply or send."
-  (when-let ((shell-buffer (agent-shell-viewport--shell-buffer)))
+  (when-let* ((shell-buffer (agent-shell-viewport--shell-buffer)))
     (agent-shell-notifications--cancel-and-close shell-buffer)))
 
 (defun agent-shell-notifications--cancel-and-close (shell-buffer)
@@ -476,13 +480,13 @@ notification after `agent-shell-notifications-idle-timeout' seconds."
   (agent-shell-notifications--close-all-notifications shell-buffer))
 
 (defun agent-shell-notifications--on-window-activity (window)
-  "Cancel timers and close notifications when the shell buffer's WINDOW is selected or deselected."
+  "Cancel timers and close notifications on WINDOW activity."
   (let* ((buf (window-buffer window))
          (shell-buf (or (agent-shell-viewport--shell-buffer buf) buf)))
     (agent-shell-notifications--cancel-and-close shell-buf)))
 
 (defun agent-shell-notifications--on-self-insert ()
-  "Cancel timers and close notifications when a character is inserted in the shell buffer."
+  "Cancel timers and close notifications on character insertion in shell buffer."
   (agent-shell-notifications--cancel-and-close (current-buffer)))
 
 (defun agent-shell-notifications--on-buffer-kill ()
@@ -575,7 +579,7 @@ close notifications when the viewport edit window is selected."
 (define-minor-mode agent-shell-notifications-viewport-view-mode
   "Toggle notifications hooks for an agent-shell viewport view buffer.
 Add to `agent-shell-viewport-view-mode-hook' to cancel idle timers and
-close notifications when the viewport view window is selected or a reply is sent."
+close notifications when viewport window is selected or reply sent."
   :lighter nil
   (if agent-shell-notifications-viewport-view-mode
       (progn
@@ -615,8 +619,8 @@ the provider must set it"))
     (error "agent-shell-notifications: `agent-shell-notifications-close-function' is nil; \
 the provider must set it")))
 
-(agent-shell-notifications-set-provider agent-shell-notifications-provider)
-
 (provide 'agent-shell-notifications)
+
+(agent-shell-notifications-set-provider agent-shell-notifications-provider)
 
 ;;; agent-shell-notifications.el ends here

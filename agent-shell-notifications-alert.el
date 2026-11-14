@@ -15,6 +15,11 @@
 
 (require 'alert)
 
+(defvar agent-shell-notifications-send-function)
+(defvar agent-shell-notifications-close-function)
+(defvar agent-shell-notifications-transform-function)
+(defvar agent-shell-notifications-transform-timeout-function)
+
 (defun agent-shell-notifications-alert-send (plist)
   "Send agent-shell notification PLIST through `alert'.
 The originating shell buffer name is appended to the title. The plist's
