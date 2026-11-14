@@ -16,16 +16,32 @@
 (require 'notifications)
 
 (defun agent-shell-notifications--send-libnotify (plist)
-  "Send a notification described by PLIST via `notifications-notify'."
+  "Send a notification described by PLIST via `notifications-notify'.
+The shell buffer name is used as the notification subject (:title) and the
+message is placed in the body.  `:app-name' identifies agent-shell."
   (let* ((title (plist-get plist :title))
          (body (plist-get plist :body))
          (buf-name (plist-get plist :shell-buffer-name))
-         (formatted-title (if (and buf-name (not (string-empty-p buf-name)))
-                              (format "%s <%s>" (or title "agent-shell") buf-name)
-                            (or title "agent-shell")))
-         (final-plist (plist-put (copy-sequence plist) :title formatted-title)))
-    (when (null body)
-      (setq final-plist (plist-put final-plist :body (or title ""))))
+         (agent-name (plist-get plist :agent-name))
+         (app-name (or (plist-get plist :app-name)
+                       (if (and agent-name (not (string-empty-p agent-name)))
+                           (format "agent-shell (%s)" agent-name)
+                         "agent-shell")))
+         (has-buf (and buf-name (not (string-empty-p buf-name))))
+         (subject (if has-buf buf-name (or title "agent-shell")))
+         (message-body (if has-buf
+                           (cond
+                            ((and title body (not (string-empty-p body)))
+                             (format "%s: %s" title body))
+                            ((and body (not (string-empty-p body)))
+                             body)
+                            (t
+                             (or title "")))
+                         (or body "")))
+         (final-plist (copy-sequence plist)))
+    (setq final-plist (plist-put final-plist :app-name app-name))
+    (setq final-plist (plist-put final-plist :title subject))
+    (setq final-plist (plist-put final-plist :body message-body))
     (apply #'notifications-notify final-plist)))
 
 (defun agent-shell-notifications--close-libnotify (id)

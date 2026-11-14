@@ -756,7 +756,7 @@
       (should (equal 'normal (plist-get (cdr alert-args) :severity))))))
 
 (ert-deftest asn-test-provider/libnotify-send-includes-buffer-name ()
-  "libnotify send formats title with buffer name and supplies fallback body."
+  "libnotify send uses buffer name as title, message as body, and sets app-name."
   (require 'agent-shell-notifications-libnotify)
   (let ((notify-args nil))
     (cl-letf (((symbol-function 'notifications-notify)
@@ -769,10 +769,76 @@
                    :shell-buffer-name "*test-shell*"
                    :timeout 30000))))
         (should (= 42 id))
-        (should (equal "Agent-shell: Ready <*test-shell*>"
+        (should (equal "*test-shell*"
                        (plist-get notify-args :title)))
         (should (equal "Agent-shell: Ready"
-                       (plist-get notify-args :body)))))))
+                       (plist-get notify-args :body)))
+        (should (equal "agent-shell"
+                       (plist-get notify-args :app-name)))))))
+
+(ert-deftest asn-test-provider/libnotify-send-with-body ()
+  "libnotify send formats title and body into message body when body is present."
+  (require 'agent-shell-notifications-libnotify)
+  (let ((notify-args nil))
+    (cl-letf (((symbol-function 'notifications-notify)
+               (lambda (&rest kwargs)
+                 (setq notify-args kwargs)
+                 42)))
+      (let ((id (agent-shell-notifications--send-libnotify
+                 '(:title "Agent-shell: Edit"
+                   :body "README.md"
+                   :shell-buffer-name "*test-shell*"
+                   :timeout 30000))))
+        (should (= 42 id))
+        (should (equal "*test-shell*"
+                       (plist-get notify-args :title)))
+        (should (equal "Agent-shell: Edit: README.md"
+                       (plist-get notify-args :body)))
+        (should (equal "agent-shell"
+                       (plist-get notify-args :app-name)))))))
+
+(ert-deftest asn-test-provider/libnotify-send-with-agent-name ()
+  "libnotify send includes agent name in app-name when provided."
+  (require 'agent-shell-notifications-libnotify)
+  (let ((notify-args nil))
+    (cl-letf (((symbol-function 'notifications-notify)
+               (lambda (&rest kwargs)
+                 (setq notify-args kwargs)
+                 42)))
+      (let ((id (agent-shell-notifications--send-libnotify
+                 '(:title "Agent-shell: Ready"
+                   :body nil
+                   :shell-buffer-name "*test-shell*"
+                   :agent-name "Claude"
+                   :timeout 30000))))
+        (should (= 42 id))
+        (should (equal "*test-shell*"
+                       (plist-get notify-args :title)))
+        (should (equal "Agent-shell: Ready"
+                       (plist-get notify-args :body)))
+        (should (equal "agent-shell (Claude)"
+                       (plist-get notify-args :app-name)))))))
+
+(ert-deftest asn-test-provider/libnotify-send-without-buffer-name ()
+  "libnotify send falls back gracefully when shell-buffer-name is nil."
+  (require 'agent-shell-notifications-libnotify)
+  (let ((notify-args nil))
+    (cl-letf (((symbol-function 'notifications-notify)
+               (lambda (&rest kwargs)
+                 (setq notify-args kwargs)
+                 42)))
+      (let ((id (agent-shell-notifications--send-libnotify
+                 '(:title "Agent-shell: Ready"
+                   :body nil
+                   :shell-buffer-name nil
+                   :timeout 30000))))
+        (should (= 42 id))
+        (should (equal "Agent-shell: Ready"
+                       (plist-get notify-args :title)))
+        (should (equal ""
+                       (plist-get notify-args :body)))
+        (should (equal "agent-shell"
+                       (plist-get notify-args :app-name)))))))
 
 (provide 'agent-shell-notifications-tests)
 
