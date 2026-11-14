@@ -239,6 +239,11 @@ Returns nil (triggering a notification) when focus state is unknown."
               (icon-name (map-nested-elt state '(:agent-config :icon-name))))
     (agent-shell--fetch-agent-icon icon-name)))
 
+(defun agent-shell-notifications--agent-name (shell-buffer)
+  "Get the agent name for SHELL-BUFFER."
+  (when-let* ((state (buffer-local-value 'agent-shell--state shell-buffer)))
+    (map-nested-elt state '(:agent-config :name))))
+
 (defun agent-shell-notifications--strip-kind-prefix (text kind)
   "Strip KIND prefix from TEXT to avoid redundancy.
 For example, \"Edit README.org\" with kind \"edit\" becomes \"README.org\"."
@@ -374,7 +379,9 @@ meta properties: :app-icon, :timeout, :actions, and :on-action."
                                  (agent-shell-notifications--resolve-timeout
                                   agent-shell-notifications-timeout type event))
                 :actions '("default" "Switch to shell")
-		:shell-buffer-name (buffer-name shell-buffer)
+                :shell-buffer shell-buffer
+                :shell-buffer-name (buffer-name shell-buffer)
+                :agent-name (agent-shell-notifications--agent-name shell-buffer)
                 :on-action (lambda (_id _key)
                              (agent-shell-notifications--switch-to-shell shell-buffer)))))
 
