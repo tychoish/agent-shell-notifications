@@ -43,8 +43,8 @@ Desktop notifications for [agent-shell](https://github.com/xenodium/agent-shell)
   ;;             (let ((hour (decoded-time-hour (decode-time))))
   ;;               (and (>= hour 9) (< hour 17)))))
 
-  ;; Use the knockknock backend instead of the default libnotify
-  ;; (setq agent-shell-notifications-provider 'agent-shell-notifications-knockknock)
+  ;; Use the alert backend instead of the default libnotify
+  ;; (setq agent-shell-notifications-provider 'agent-shell-notifications-alert)
   )
 ```
 
@@ -55,29 +55,17 @@ Desktop notifications for [agent-shell](https://github.com/xenodium/agent-shell)
 Uses Emacs' built-in [`notifications.el`](https://www.gnu.org/software/emacs/manual/html_node/elisp/Desktop-Notifications.html) via D-Bus. Works out of the box on Linux with a
 running notification daemon. (Tested with KDE Plasma 6)
 
-### knockknock (experimental)
-
-Displays notifications as an in-Emacs overlay using the
-[knockknock](https://github.com/konrad1977/knockknock) package. (Requires [PR #4](https://github.com/konrad1977/knockknock/pull/4)) Useful if you prefer
-notifications inside Emacs or are on a system where D-Bus is unavailable.
-
-> **Note:** This backend is experimental. It is included primarily as a working example of
-> a custom backend. The author does not use knockknock personally, so it may have rough
-> edges. Bug reports and improvements are welcome.
-
-Requires `knockknock` to be installed. Enable it with:
-
-```elisp
-(setq agent-shell-notifications-provider 'agent-shell-notifications-knockknock)
-```
-
 ### alert.el (experimental)
 
-Uses [alert.el](https://github.com/jwiegley/alert) as a backed to
+Uses [alert.el](https://github.com/jwiegley/alert) as a backend to
 display notifications. Alert supports a [range of alert
 backends](https://github.com/jwiegley/alert#builtin-alert-styles)
-including macOS's notifications ((terminal) `notifier` and applescript
-as `osx-notifier`) and Windows' `toast` notifier.
+including macOS notifications ((terminal) `notifier` and AppleScript
+as `osx-notifier`) and Windows `toast` notifier. Enable it with:
+
+```elisp
+(setq agent-shell-notifications-provider 'agent-shell-notifications-alert)
+```
 
 ## Configuration
 
