@@ -597,7 +597,10 @@ skips loading and validation (the functions must be set manually).
 Interactively, reads a provider symbol from the minibuffer."
   (interactive "SProvider symbol: ")
   (when provider
-    (require provider))
+    (require provider)
+    (let ((setup-fn (intern (format "%s-setup" provider))))
+      (when (fboundp setup-fn)
+        (funcall setup-fn))))
   (unless agent-shell-notifications-send-function
     (error "agent-shell-notifications: `agent-shell-notifications-send-function' is nil; \
 the provider must set it"))

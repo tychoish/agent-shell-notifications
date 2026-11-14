@@ -42,10 +42,14 @@ visible for alert styles that honor it."
 (defun agent-shell-notifications-alert-close (_id)
   "No-op close: `alert' styles dismiss themselves." nil)
 
-(setq agent-shell-notifications-send-function #'agent-shell-notifications-alert-send)
-(setq agent-shell-notifications-close-function #'agent-shell-notifications-alert-close)
-(setq agent-shell-notifications-transform-function #'identity)
-(setq agent-shell-notifications-transform-timeout-function #'identity)
+;;;###autoload
+(defun agent-shell-notifications-alert-setup ()
+  "Configure `agent-shell-notifications' to use `alert.el'."
+  (setq agent-shell-notifications-send-function #'agent-shell-notifications-alert-send)
+  (setq agent-shell-notifications-close-function #'agent-shell-notifications-alert-close)
+  (setq agent-shell-notifications-transform-function #'identity)
+  (setq agent-shell-notifications-transform-timeout-function #'identity))
 
+(agent-shell-notifications-alert-setup)
 
 (provide 'agent-shell-notifications-alert)

@@ -717,6 +717,19 @@
         (agent-shell-notifications-close-function nil))
     (should-error (agent-shell-notifications-set-provider nil))))
 
+(ert-deftest asn-test-set-provider/switches-between-providers ()
+  "set-provider re-applies functions when switching between loaded providers."
+  (agent-shell-notifications-set-provider 'agent-shell-notifications-libnotify)
+  (should (eq agent-shell-notifications-send-function
+              #'agent-shell-notifications--send-libnotify))
+  (should (eq agent-shell-notifications-close-function
+              #'agent-shell-notifications--close-libnotify))
+  (agent-shell-notifications-set-provider 'agent-shell-notifications-alert)
+  (should (eq agent-shell-notifications-send-function
+              #'agent-shell-notifications-alert-send))
+  (should (eq agent-shell-notifications-close-function
+              #'agent-shell-notifications-alert-close)))
+
 (ert-deftest asn-test-defaults/provider-and-timeout ()
   "Provider defaults to alert.el and timeout defaults to 30."
   (should (eq 'agent-shell-notifications-alert
