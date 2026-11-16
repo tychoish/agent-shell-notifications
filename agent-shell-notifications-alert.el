@@ -22,7 +22,9 @@
 
 (defun agent-shell-notifications-alert-send (plist)
   "Send agent-shell notification PLIST through `alert'.
-The originating shell buffer name is appended to the title. The plist's
+The originating shell buffer name is appended to the title, and the
+message combines title and body so styles that ignore `:title' still
+show the cause. The plist's
 `:timeout' is bound to `alert-fade-time' when positive so the configured
 `agent-shell-notifications-timeout' controls how long notifications stay
 visible for alert styles that honor it."
@@ -35,7 +37,14 @@ visible for alert styles that honor it."
 	 (alert-fade-time (if (and (numberp timeout) (> timeout 0))
 			      timeout
 			    alert-fade-time)))
-    (alert (or body title "")
+    (alert (let ((text (cond
+			((and title body (not (string-empty-p body)))
+			 (format "%s: %s" title body))
+			(t
+			 (or title body "")))))
+	     (if (and buf-name (not (string-empty-p buf-name)))
+		 (format "%s [%s]" text buf-name)
+	       text))
 	   :title (if (and buf-name (not (string-empty-p buf-name)))
 		      (format "%s <%s>" (or title "agent-shell") buf-name)
 		    (or title "agent-shell"))
