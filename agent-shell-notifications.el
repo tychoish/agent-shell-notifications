@@ -52,7 +52,8 @@ When an alist of (TYPE . SECONDS) pairs, use a per-type timeout.
 When a function, call it with the event TYPE symbol and EVENT;
 it should return the timeout in seconds.
 
-A value of 0 means never expire.  The default is 30 seconds.  A value of -1 means use the backend default.
+A value of 0 means never expire.  The default is 30 seconds.
+A value of -1 means use the backend default.
 
 Possible event types: `permission-request', `turn-complete'."
   :type '(choice (number :tag "Seconds for all types")
