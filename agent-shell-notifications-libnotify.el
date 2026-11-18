@@ -28,20 +28,23 @@ message is placed in the body.  `:app-name' identifies agent-shell."
          (body (plist-get plist :body))
          (buf-name (plist-get plist :shell-buffer-name))
          (agent-name (plist-get plist :agent-name))
+         (effective-title (or title
+                              (when (and agent-name (not (string-empty-p agent-name)))
+                                (format "%s: Ready" agent-name))))
          (app-name (or (plist-get plist :app-name)
                        (if (and agent-name (not (string-empty-p agent-name)))
                            (format "agent-shell (%s)" agent-name)
                          "agent-shell")))
          (has-buf (and buf-name (not (string-empty-p buf-name))))
-         (subject (if has-buf buf-name (or title "agent-shell")))
+         (subject (if has-buf buf-name (or effective-title "agent-shell")))
          (message-body (if has-buf
                            (cond
-                            ((and title body (not (string-empty-p body)))
-                             (format "%s: %s" title body))
+                            ((and effective-title body (not (string-empty-p body)))
+                             (format "%s: %s" effective-title body))
                             ((and body (not (string-empty-p body)))
                              body)
                             (t
-                             (or title "")))
+                             (or effective-title "")))
                          (or body "")))
          (final-plist (copy-sequence plist)))
     (setq final-plist (plist-put final-plist :app-name app-name))

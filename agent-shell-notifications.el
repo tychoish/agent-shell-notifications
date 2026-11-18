@@ -130,7 +130,8 @@ Possible event types: `permission-request', `turn-complete'."
   #'agent-shell-notifications--format-default
   "Function to build notification content for an agent-shell event.
 Called with two arguments: TYPE (a symbol such as
-\\='permission-request or \\='turn-complete) and EVENT.
+`permission-request' or `turn-complete') and EVENT, with optional third
+argument SHELL-BUFFER.
 Should return a plist with at least :title; :body is optional.
 
 Possible event types: `permission-request', `turn-complete'."
@@ -244,7 +245,11 @@ Visibility is determined by `agent-shell-notifications-shell-visible-function'."
 (defun agent-shell-notifications--agent-name (shell-buffer)
   "Get the agent name for SHELL-BUFFER."
   (when-let* ((state (buffer-local-value 'agent-shell--state shell-buffer)))
-    (map-nested-elt state '(:agent-config :name))))
+    (or (map-nested-elt state '(:agent-config :name))
+        (map-nested-elt state '(:agent-config :buffer-name))
+        (map-nested-elt state '(:agent-config :mode-line-name))
+        (when-let* ((id (map-nested-elt state '(:agent-config :identifier))))
+          (capitalize (symbol-name id))))))
 
 (defun agent-shell-notifications--strip-kind-prefix (text kind)
   "Strip KIND prefix from TEXT to avoid redundancy.
@@ -294,19 +299,22 @@ current window's buffer."
 Uses `agent-shell-notifications-switch-to-shell-function'."
   (funcall agent-shell-notifications-switch-to-shell-function shell-buffer))
 
-(defun agent-shell-notifications--format-default (type event)
+(defun agent-shell-notifications--format-default (type event &optional shell-buffer)
   "Default implementation of `agent-shell-notifications-format-function'.
-Returns a plist with :title and optionally :body for TYPE and EVENT."
-  (pcase type
-    ('permission-request
-     (list :title (concat "Agent-shell: "
-                          (capitalize (or (map-nested-elt event '(:data :tool-call :kind)) "")))
-           :body (agent-shell-notifications--format-permission-message
-                  (map-nested-elt event '(:data :tool-call)))))
-    ('turn-complete
-     (list :title (if (equal (map-nested-elt event '(:data :stop-reason)) "end_turn")
-                      "Agent-shell: Ready"
-                    "Agent-shell: Stopped")))))
+Returns a plist with :title and optionally :body for TYPE and EVENT.
+When SHELL-BUFFER is provided, use its agent name in the title."
+  (let ((agent (or (and shell-buffer (agent-shell-notifications--agent-name shell-buffer))
+                   "Agent-shell")))
+    (pcase type
+      ('permission-request
+       (list :title (concat agent ": "
+                            (capitalize (or (map-nested-elt event '(:data :tool-call :kind)) "")))
+             :body (agent-shell-notifications--format-permission-message
+                    (map-nested-elt event '(:data :tool-call)))))
+      ('turn-complete
+       (list :title (if (equal (map-nested-elt event '(:data :stop-reason)) "end_turn")
+                        (format "%s: Ready" agent)
+                      (format "%s: Stopped" agent)))))))
 
 (defun agent-shell-notifications--should-notify-p (setting type event)
   "Return non-nil if SETTING allows notification for event TYPE.
@@ -377,17 +385,26 @@ Replaces any existing entry."
   "Build the full notification plist for TYPE on SHELL-BUFFER with EVENT.
 Merges the content from `agent-shell-notifications-format-function' with
 meta properties: :app-icon, :timeout, :actions, and :on-action."
-  (append (funcall agent-shell-notifications-format-function type event)
-          (list :app-icon (agent-shell-notifications--icon-file shell-buffer)
-                :timeout (funcall agent-shell-notifications-transform-timeout-function
-                                 (agent-shell-notifications--resolve-timeout
-                                  agent-shell-notifications-timeout type event))
-                :actions '("default" "Switch to shell")
-                :shell-buffer shell-buffer
-                :shell-buffer-name (buffer-name shell-buffer)
-                :agent-name (agent-shell-notifications--agent-name shell-buffer)
-                :on-action (lambda (_id _key)
-                             (agent-shell-notifications--switch-to-shell shell-buffer)))))
+  (let* ((agent-name (agent-shell-notifications--agent-name shell-buffer))
+         (content (condition-case nil
+                      (funcall agent-shell-notifications-format-function type event shell-buffer)
+                    (wrong-number-of-arguments
+                     (funcall agent-shell-notifications-format-function type event))))
+         (title (plist-get content :title)))
+    (when (and agent-name title (string-prefix-p "Agent-shell" title))
+      (setq content (plist-put (copy-sequence content) :title
+                               (replace-regexp-in-string "\\`Agent-shell" agent-name title))))
+    (append content
+            (list :app-icon (agent-shell-notifications--icon-file shell-buffer)
+                  :timeout (funcall agent-shell-notifications-transform-timeout-function
+                                   (agent-shell-notifications--resolve-timeout
+                                    agent-shell-notifications-timeout type event))
+                  :actions '("default" "Switch to shell")
+                  :shell-buffer shell-buffer
+                  :shell-buffer-name (buffer-name shell-buffer)
+                  :agent-name agent-name
+                  :on-action (lambda (_id _key)
+                               (agent-shell-notifications--switch-to-shell shell-buffer))))))
 
 (defun agent-shell-notifications--notify-and-track (type shell-buffer event key)
   "Send notification for TYPE on SHELL-BUFFER with EVENT.

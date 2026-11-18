@@ -32,22 +32,27 @@ visible for alert styles that honor it."
 	 (body (plist-get plist :body))
 	 (icon (plist-get plist :app-icon))
 	 (buf-name (plist-get plist :shell-buffer-name))
+	 (agent-name (plist-get plist :agent-name))
 	 (timeout (plist-get plist :timeout))
 	 ;; alert-fade-type is a dynamic variable that's captured
 	 (alert-fade-time (if (and (numberp timeout) (> timeout 0))
 			      timeout
-			    alert-fade-time)))
+			    alert-fade-time))
+	 (effective-title (or title
+			      (if (and agent-name (not (string-empty-p agent-name)))
+				  (format "%s: Ready" agent-name)
+				"agent-shell"))))
     (alert (let ((text (cond
-			((and title body (not (string-empty-p body)))
-			 (format "%s: %s" title body))
+			((and effective-title body (not (string-empty-p body)))
+			 (format "%s: %s" effective-title body))
 			(t
-			 (or title body "")))))
+			 (or effective-title body "")))))
 	     (if (and buf-name (not (string-empty-p buf-name)))
 		 (format "%s [%s]" text buf-name)
 	       text))
 	   :title (if (and buf-name (not (string-empty-p buf-name)))
-		      (format "%s <%s>" (or title "agent-shell") buf-name)
-		    (or title "agent-shell"))
+		      (format "%s <%s>" effective-title buf-name)
+		    effective-title)
 	   :icon icon
 	   :category 'agent-shell
 	   :severity 'normal))

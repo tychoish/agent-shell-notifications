@@ -194,6 +194,49 @@
                              (asn-test--make-turn-complete-event "error"))
                             :title))))
 
+(ert-deftest asn-test-format-default/turn-complete-with-agent ()
+  "format-default includes agent name in title when shell-buffer provides it."
+  (with-temp-buffer
+    (setq-local agent-shell--state
+                '((:agent-config (:buffer-name . "Antigravity"))))
+    (should (equal "Antigravity: Ready"
+                   (plist-get (agent-shell-notifications--format-default
+                               'turn-complete
+                               (asn-test--make-turn-complete-event "end_turn")
+                               (current-buffer))
+                              :title)))
+    (should (equal "Antigravity: Stopped"
+                   (plist-get (agent-shell-notifications--format-default
+                               'turn-complete
+                               (asn-test--make-turn-complete-event "error")
+                               (current-buffer))
+                              :title)))))
+
+(ert-deftest asn-test-agent-name/resolution ()
+  "agent-shell-notifications--agent-name resolves agent name from config keys."
+  (with-temp-buffer
+    (should-not (agent-shell-notifications--agent-name (current-buffer)))
+    (setq-local agent-shell--state
+                '((:agent-config (:identifier . antigravity))))
+    (should (equal "Antigravity"
+                   (agent-shell-notifications--agent-name (current-buffer))))
+    (setq-local agent-shell--state
+                '((:agent-config (:identifier . antigravity)
+                                 (:mode-line-name . "agy"))))
+    (should (equal "agy"
+                   (agent-shell-notifications--agent-name (current-buffer))))
+    (setq-local agent-shell--state
+                '((:agent-config (:identifier . antigravity)
+                                 (:mode-line-name . "agy")
+                                 (:buffer-name . "Antigravity"))))
+    (should (equal "Antigravity"
+                   (agent-shell-notifications--agent-name (current-buffer))))
+    (setq-local agent-shell--state
+                '((:agent-config (:name . "Custom")
+                                 (:buffer-name . "Antigravity"))))
+    (should (equal "Custom"
+                   (agent-shell-notifications--agent-name (current-buffer))))))
+
 ;; ---------------------------------------------------------------------------
 ;; Tests: format-permission-message
 ;; ---------------------------------------------------------------------------
@@ -733,6 +776,18 @@
     (should (equal (buffer-name)
                    (plist-get (car asn-test--send-calls) :shell-buffer-name)))))
 
+(ert-deftest asn-test-plist/includes-agent-name-and-personalized-title ()
+  "Notification plist includes resolved agent-name and specializes generic title."
+  (asn-test--with-shell-buffer
+    (setq-local agent-shell--state
+                '((:agent-config (:buffer-name . "Antigravity"))))
+    (agent-shell-notifications--schedule-or-notify
+     'turn-complete (current-buffer)
+     (asn-test--make-turn-complete-event "end_turn"))
+    (let ((sent (car asn-test--send-calls)))
+      (should (equal "Antigravity" (plist-get sent :agent-name)))
+      (should (equal "Antigravity: Ready" (plist-get sent :title))))))
+
 (ert-deftest asn-test-alert-provider/sets-functions-and-sends ()
   "The alert provider installs its functions and titles with the buffer name."
   (let ((agent-shell-notifications-send-function nil)
@@ -791,6 +846,23 @@
                      (plist-get (cdr alert-args) :title)))
       (should (equal 'agent-shell (plist-get (cdr alert-args) :category)))
       (should (equal 'normal (plist-get (cdr alert-args) :severity))))))
+
+(ert-deftest asn-test-provider/alert-send-with-agent-name-fallback ()
+  "alert-send uses agent-name when title is nil."
+  (require 'agent-shell-notifications-alert)
+  (let ((alert-args nil))
+    (cl-letf (((symbol-function 'alert)
+               (lambda (text &rest kwargs)
+                 (setq alert-args (cons text kwargs)))))
+      (agent-shell-notifications-alert-send
+       '(:title nil
+         :body nil
+         :shell-buffer-name "*test-shell*"
+         :agent-name "Claude"
+         :timeout 30))
+      (should (equal "Claude: Ready [*test-shell*]" (car alert-args)))
+      (should (equal "Claude: Ready <*test-shell*>"
+                     (plist-get (cdr alert-args) :title))))))
 
 (ert-deftest asn-test-provider/libnotify-send-includes-buffer-name ()
   "libnotify send uses buffer name as title, message as body, and sets app-name."
@@ -875,6 +947,28 @@
         (should (equal ""
                        (plist-get notify-args :body)))
         (should (equal "agent-shell"
+                       (plist-get notify-args :app-name)))))))
+
+(ert-deftest asn-test-provider/libnotify-send-with-agent-name-fallback ()
+  "libnotify send uses agent-name when title is nil."
+  (require 'agent-shell-notifications-libnotify)
+  (let ((notify-args nil))
+    (cl-letf (((symbol-function 'notifications-notify)
+               (lambda (&rest kwargs)
+                 (setq notify-args kwargs)
+                 42)))
+      (let ((id (agent-shell-notifications--send-libnotify
+                 '(:title nil
+                   :body nil
+                   :shell-buffer-name "*test-shell*"
+                   :agent-name "Claude"
+                   :timeout 30000))))
+        (should (= 42 id))
+        (should (equal "*test-shell*"
+                       (plist-get notify-args :title)))
+        (should (equal "Claude: Ready"
+                       (plist-get notify-args :body)))
+        (should (equal "agent-shell (Claude)"
                        (plist-get notify-args :app-name)))))))
 
 (provide 'test-agent-shell-notifications)
