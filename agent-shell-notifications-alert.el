@@ -47,9 +47,7 @@ visible for alert styles that honor it."
 			 (format "%s: %s" effective-title body))
 			(t
 			 (or effective-title body "")))))
-	     (if (and buf-name (not (string-empty-p buf-name)))
-		 (format "%s [%s]" text buf-name)
-	       text))
+	     text)
 	   :title (if (and buf-name (not (string-empty-p buf-name)))
 		      (format "%s <%s>" effective-title buf-name)
 		    effective-title)
@@ -72,3 +70,5 @@ visible for alert styles that honor it."
 (agent-shell-notifications-alert-setup)
 
 (provide 'agent-shell-notifications-alert)
+
+;;; agent-shell-notifications-alert.el ends here

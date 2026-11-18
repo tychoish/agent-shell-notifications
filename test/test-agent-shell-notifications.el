@@ -805,7 +805,7 @@
                (lambda (msg &rest args) (push (cons msg args) calls))))
       (should-not (agent-shell-notifications-alert-send
                    '(:title "T" :body "B" :shell-buffer-name "shell" :timeout 7))))
-    (should (equal "T: B [shell]" (car (car calls))))
+    (should (equal "T: B" (car (car calls))))
     (should (equal "T <shell>" (plist-get (cdr (car calls)) :title)))))
 
 
@@ -841,7 +841,7 @@
          :body nil
          :shell-buffer-name "*test-shell*"
          :timeout 30))
-      (should (equal "Agent-shell: Ready [*test-shell*]" (car alert-args)))
+      (should (equal "Agent-shell: Ready" (car alert-args)))
       (should (equal "Agent-shell: Ready <*test-shell*>"
                      (plist-get (cdr alert-args) :title)))
       (should (equal 'agent-shell (plist-get (cdr alert-args) :category)))
@@ -860,7 +860,7 @@
          :shell-buffer-name "*test-shell*"
          :agent-name "Claude"
          :timeout 30))
-      (should (equal "Claude: Ready [*test-shell*]" (car alert-args)))
+      (should (equal "Claude: Ready" (car alert-args)))
       (should (equal "Claude: Ready <*test-shell*>"
                      (plist-get (cdr alert-args) :title))))))
 
