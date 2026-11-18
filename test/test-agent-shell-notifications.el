@@ -806,7 +806,7 @@
       (should-not (agent-shell-notifications-alert-send
                    '(:title "T" :body "B" :shell-buffer-name "shell" :timeout 7))))
     (should (equal "T: B" (car (car calls))))
-    (should (equal "T <shell>" (plist-get (cdr (car calls)) :title)))))
+    (should (equal "shell" (plist-get (cdr (car calls)) :title)))))
 
 
 (ert-deftest asn-test-set-provider/switches-between-providers ()
@@ -830,7 +830,7 @@
              (eval (car (get 'agent-shell-notifications-timeout 'standard-value))))))
 
 (ert-deftest asn-test-provider/alert-send-includes-buffer-name ()
-  "alert-send appends originating buffer name to title."
+  "alert-send uses buffer name as title and message as body."
   (require 'agent-shell-notifications-alert)
   (let ((alert-args nil))
     (cl-letf (((symbol-function 'alert)
@@ -842,7 +842,7 @@
          :shell-buffer-name "*test-shell*"
          :timeout 30))
       (should (equal "Agent-shell: Ready" (car alert-args)))
-      (should (equal "Agent-shell: Ready <*test-shell*>"
+      (should (equal "*test-shell*"
                      (plist-get (cdr alert-args) :title)))
       (should (equal 'agent-shell (plist-get (cdr alert-args) :category)))
       (should (equal 'normal (plist-get (cdr alert-args) :severity))))))
@@ -861,7 +861,7 @@
          :agent-name "Claude"
          :timeout 30))
       (should (equal "Claude: Ready" (car alert-args)))
-      (should (equal "Claude: Ready <*test-shell*>"
+      (should (equal "*test-shell*"
                      (plist-get (cdr alert-args) :title))))))
 
 (ert-deftest asn-test-provider/libnotify-send-includes-buffer-name ()

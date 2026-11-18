@@ -22,9 +22,8 @@
 
 (defun agent-shell-notifications-alert-send (plist)
   "Send agent-shell notification PLIST through `alert'.
-The originating shell buffer name is appended to the title, and the
-message combines title and body so styles that ignore `:title' still
-show the cause. The plist's
+The originating shell buffer name is used as the notification subject
+\(:title\) and the message is placed in the body.  The plist's
 `:timeout' is bound to `alert-fade-time' when positive so the configured
 `agent-shell-notifications-timeout' controls how long notifications stay
 visible for alert styles that honor it."
@@ -41,16 +40,20 @@ visible for alert styles that honor it."
 	 (effective-title (or title
 			      (if (and agent-name (not (string-empty-p agent-name)))
 				  (format "%s: Ready" agent-name)
-				"agent-shell"))))
-    (alert (let ((text (cond
-			((and effective-title body (not (string-empty-p body)))
-			 (format "%s: %s" effective-title body))
-			(t
-			 (or effective-title body "")))))
-	     text)
-	   :title (if (and buf-name (not (string-empty-p buf-name)))
-		      (format "%s <%s>" effective-title buf-name)
-		    effective-title)
+				"agent-shell")))
+	 (has-buf (and buf-name (not (string-empty-p buf-name))))
+	 (subject (if has-buf buf-name (or effective-title "agent-shell")))
+	 (message-body (if has-buf
+			   (cond
+			    ((and effective-title body (not (string-empty-p body)))
+			     (format "%s: %s" effective-title body))
+			    ((and body (not (string-empty-p body)))
+			     body)
+			    (t
+			     (or effective-title "")))
+			 (or body ""))))
+    (alert message-body
+	   :title subject
 	   :icon icon
 	   :category 'agent-shell
 	   :severity 'normal))
