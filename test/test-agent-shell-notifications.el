@@ -805,7 +805,7 @@
                (lambda (msg &rest args) (push (cons msg args) calls))))
       (should-not (agent-shell-notifications-alert-send
                    '(:title "T" :body "B" :shell-buffer-name "shell" :timeout 7))))
-    (should (equal "T: B" (car (car calls))))
+    (should (equal "shell: T: B" (car (car calls))))
     (should (equal "shell" (plist-get (cdr (car calls)) :title)))))
 
 
@@ -841,7 +841,7 @@
          :body nil
          :shell-buffer-name "*test-shell*"
          :timeout 30))
-      (should (equal "Agent-shell: Ready" (car alert-args)))
+      (should (equal "*test-shell*: Agent-shell: Ready" (car alert-args)))
       (should (equal "*test-shell*"
                      (plist-get (cdr alert-args) :title)))
       (should (equal 'agent-shell (plist-get (cdr alert-args) :category)))
@@ -860,7 +860,7 @@
          :shell-buffer-name "*test-shell*"
          :agent-name "Claude"
          :timeout 30))
-      (should (equal "Claude: Ready" (car alert-args)))
+      (should (equal "*test-shell*: Claude: Ready" (car alert-args)))
       (should (equal "*test-shell*"
                      (plist-get (cdr alert-args) :title))))))
 
@@ -970,6 +970,51 @@
                        (plist-get notify-args :body)))
         (should (equal "agent-shell (Claude)"
                        (plist-get notify-args :app-name)))))))
+
+(ert-deftest asn-test-event-flow/real-provider-includes-originating-buffer ()
+  "Both providers display the real buffer name, even with a custom formatter."
+  (asn-test--with-shell-buffer
+    (require 'agent-shell-notifications-libnotify)
+    (require 'agent-shell-notifications-alert)
+    (rename-buffer "*agent-shell project one*" t)
+    (let ((expected (buffer-name))
+          (notification nil))
+      (setq agent-shell-notifications-format-function
+            (lambda (_type _event)
+              '(:title "Ready" :shell-buffer-name "wrong buffer")))
+      (setq agent-shell-notifications-send-function
+            #'agent-shell-notifications--send-libnotify)
+      (cl-letf (((symbol-function 'notifications-notify)
+                 (lambda (&rest args) (setq notification args) 1)))
+        (agent-shell-notifications--on-turn-complete
+         (asn-test--make-turn-complete-event))
+        (should (equal expected (plist-get notification :title))))
+      (rename-buffer "*agent-shell project renamed*" t)
+      (setq expected (buffer-name))
+      (setq agent-shell-notifications-send-function
+            #'agent-shell-notifications-alert-send)
+      (cl-letf (((symbol-function 'alert)
+                 (lambda (body &rest args)
+                   (setq notification (plist-put args :message body)))))
+        (agent-shell-notifications--on-turn-complete
+         (asn-test--make-turn-complete-event))
+        (should (equal expected (plist-get notification :title)))
+        (should (string-search expected (plist-get notification :message)))))))
+
+(ert-deftest asn-test-event-flow/idle-notification-uses-current-buffer-name ()
+  "An idle notification uses the shell buffer name at delivery time."
+  (asn-test--with-visible-shell
+    (require 'agent-shell-notifications-libnotify)
+    (let ((notification nil))
+      (setq agent-shell-notifications-send-function
+            #'agent-shell-notifications--send-libnotify)
+      (cl-letf (((symbol-function 'notifications-notify)
+                 (lambda (&rest args) (setq notification args) 1)))
+        (agent-shell-notifications--schedule-or-notify
+         'permission-request (current-buffer) (asn-test--make-permission-event))
+        (rename-buffer "*agent-shell delayed session*" t)
+        (funcall (plist-get (car asn-test--timers-created) :func))
+        (should (equal (buffer-name) (plist-get notification :title)))))))
 
 (provide 'test-agent-shell-notifications)
 

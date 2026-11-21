@@ -52,6 +52,9 @@ visible for alert styles that honor it."
 			    (t
 			     (or effective-title "")))
 			 (or body ""))))
+    ;; Some alert styles display only the message, not the title.
+    (when has-buf
+      (setq message-body (format "%s: %s" buf-name message-body)))
     (alert message-body
 	   :title subject
 	   :icon icon

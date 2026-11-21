@@ -394,14 +394,15 @@ meta properties: :app-icon, :timeout, :actions, and :on-action."
     (when (and agent-name title (string-prefix-p "Agent-shell" title))
       (setq content (plist-put (copy-sequence content) :title
                                (replace-regexp-in-string "\\`Agent-shell" agent-name title))))
+    ;; Formatter metadata must not override the originating session.
+    (setq content (plist-put (copy-sequence content) :shell-buffer shell-buffer))
+    (setq content (plist-put content :shell-buffer-name (buffer-name shell-buffer)))
     (append content
             (list :app-icon (agent-shell-notifications--icon-file shell-buffer)
                   :timeout (funcall agent-shell-notifications-transform-timeout-function
                                    (agent-shell-notifications--resolve-timeout
                                     agent-shell-notifications-timeout type event))
                   :actions '("default" "Switch to shell")
-                  :shell-buffer shell-buffer
-                  :shell-buffer-name (buffer-name shell-buffer)
                   :agent-name agent-name
                   :on-action (lambda (_id _key)
                                (agent-shell-notifications--switch-to-shell shell-buffer))))))
